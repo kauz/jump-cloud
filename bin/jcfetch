@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+
+require('dotenv').config();
+const program = require('commander');
+const rp = require('request-promise');
+const fs = require('fs');
+const path = require('path');
+const token = process.env.JUMPCLOUD_TOKEN;
+const apiUrl = process.env.JUMPCLOUD_API;
+const resources = ['/users', '/applications', '/application-users'];
+
+program.version('1.0.0')
+  .option('-d, --destination [dir name]', 'Destination directory name')
+  .parse(process.argv);
+
+const options = (resource, version) => {
+  let url = version ? apiUrl + version : apiUrl;
+
+  return {
+    uri: url + resource,
+    headers: {
+      'x-api-key': token
+    },
+    json: true
+  }
+};
+
+
+async function fetchData() {
+  let users, applications, appBounds;
+
+  try {
+    users = await rp(options(resources[0]));
+    applications = await rp(options(resources[1]));
+  } catch (err) {
+    console.log(err);
+    process.exit(0)
+  }
+
+  if (applications && applications.results) {
+    try {
+      appBounds = await fillBounds(applications);
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  saveData([users, applications, appBounds]);
+}
+
+async function fillBounds(apps) {
+  const appsClone = JSON.parse(JSON.stringify(apps.results));
+  const getBounds = async id => {
+    return await rp(options(`/applications/${id}/users`, '/v2'));
+  };
+
+  for (let i = 0; i < appsClone.length; i++) {
+      appsClone[i].users = await getBounds(appsClone[i]._id);
+  }
+
+  return appsClone;
+}
+
+function saveData(data) {
+  let output = (i) => fs.createWriteStream(path.resolve(program.destination) + `${resources[i]}.json`);
+
+  data.forEach((val, idx) => {
+    output(idx).write(JSON.stringify(val))
+  });
+}
+
+
+fetchData();
