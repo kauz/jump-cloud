@@ -67,6 +67,8 @@ function saveData(data) {
   data.forEach((val, idx) => {
     output(idx).write(JSON.stringify(val))
   });
+
+  console.log('Data saved to %s', program.destination);
 }
 
 
