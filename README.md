@@ -8,7 +8,7 @@ Clone the repo:
 
 Install dependencies
 
-    npm i
+    cd jump-cloud && npm i
 
 ### Usage:
 
